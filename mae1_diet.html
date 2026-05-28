@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#10b981">
+<title>약사 메이 저염식 관리</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+    background: #f3f4f6; color: #1f2937; padding-bottom: 80px; min-height: 100vh;
+  }
+  .header {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white; padding: 20px 16px 24px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .header h1 { font-size: 20px; font-weight: 700; }
+  .header .date { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+  .header .sync-status { font-size: 11px; opacity: 0.9; margin-top: 4px; }
+  .container { padding: 16px; max-width: 500px; margin: 0 auto; }
+
+  .status-card {
+    background: white; border-radius: 16px; padding: 20px;
+    margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    text-align: center;
+  }
+  .status-card.ended { opacity: 0.85; border: 2px solid #10b981; }
+  .signal { font-size: 64px; margin: 8px 0; }
+  .sodium-total { font-size: 36px; font-weight: 800; margin: 8px 0; }
+  .sodium-label { font-size: 13px; color: #6b7280; }
+  .progress-bar { height: 10px; background: #e5e7eb; border-radius: 5px; overflow: hidden; margin-top: 12px; }
+  .progress-fill { height: 100%; transition: width 0.5s, background 0.3s; border-radius: 5px; }
+  .status-msg { margin-top: 12px; font-size: 14px; font-weight: 600; }
+  .ended-badge {
+    display: inline-block; background: #10b981; color: white;
+    padding: 4px 12px; border-radius: 12px; font-size: 12px;
+    font-weight: 700; margin-top: 8px;
+  }
+
+  .tabs {
+    display: flex; background: white; border-radius: 12px; padding: 4px;
+    margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .tab {
+    flex: 1; padding: 10px; text-align: center; border-radius: 8px;
+    cursor: pointer; font-size: 14px; font-weight: 600;
+    color: #6b7280; transition: all 0.2s;
+  }
+  .tab.active { background: #10b981; color: white; }
+
+  .card {
+    background: white; border-radius: 14px; padding: 16px;
+    margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .card-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+
+  .btn {
+    width: 100%; padding: 14px; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: all 0.2s; margin-top: 8px;
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: #10b981; color: white; }
+  .btn-primary:active:not(:disabled) { background: #059669; transform: scale(0.98); }
+  .btn-secondary { background: #f3f4f6; color: #374151; }
+  .btn-warn { background: #f59e0b; color: white; }
+  .btn-warn:active:not(:disabled) { background: #d97706; }
+  .btn-google { background: #4285f4; color: white; }
+  .btn-danger-sm { background: #fef2f2; color: #dc2626; border: none; border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer; }
+
+  .input, .textarea {
+    width: 100%; padding: 12px; border: 1.5px solid #e5e7eb;
+    border-radius: 10px; font-size: 15px; margin-top: 6px;
+    background: #fafafa; font-family: inherit;
+  }
+  .input:focus { outline: none; border-color: #10b981; background: white; }
+  .label { font-size: 13px; font-weight: 600; color: #4b5563; margin-top: 10px; display: block; }
+
+  .photo-upload {
+    border: 2px dashed #d1d5db; border-radius: 12px; padding: 24px;
+    text-align: center; cursor: pointer; background: #fafafa;
+  }
+  .photo-upload:active { background: #f3f4f6; border-color: #10b981; }
+  .photo-preview { width: 100%; max-height: 240px; object-fit: cover; border-radius: 10px; margin-top: 8px; }
+
+  .meal-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px;
+    background: #fafafa; border-radius: 10px; margin-bottom: 8px;
+  }
+  .meal-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; background: #e5e7eb; flex-shrink: 0; }
+  .meal-info { flex: 1; min-width: 0; }
+  .meal-name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meal-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  .meal-sodium { font-size: 14px; font-weight: 700; color: #dc2626; }
+
+  .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .cal-nav { background: #f3f4f6; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 600; }
+  .cal-month { font-size: 16px; font-weight: 700; }
+  .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-day-label { text-align: center; font-size: 11px; font-weight: 600; color: #6b7280; padding: 4px; }
+  .cal-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; font-size: 13px; font-weight: 600; position: relative;
+  }
+  .cal-day.empty { background: transparent; }
+  .cal-day.green { background: #d1fae5; color: #065f46; }
+  .cal-day.yellow { background: #fef3c7; color: #92400e; }
+  .cal-day.red { background: #fee2e2; color: #991b1b; }
+  .cal-day.gray { background: #f3f4f6; color: #9ca3af; }
+  .cal-day.in-progress { background: #dbeafe; color: #1e40af; }
+  .cal-day.today { box-shadow: 0 0 0 2px #10b981; }
+  .cal-day .ended-dot { position: absolute; bottom: 3px; right: 3px; width: 5px; height: 5px; border-radius: 50%; background: #10b981; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: #fafafa; padding: 12px; border-radius: 10px; text-align: center; }
+  .stat-val { font-size: 20px; font-weight: 800; }
+  .stat-lbl { font-size: 11px; color: #6b7280; margin-top: 4px; }
+
+  .hidden { display: none !important; }
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid #fff; border-top-color: transparent;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+    vertical-align: middle; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .alert { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 10px 12px; border-radius: 6px; font-size: 13px; color: #78350f; margin-top: 8px; }
+  .alert-success { background: #d1fae5; border-left-color: #10b981; color: #065f46; }
+  .alert-error { background: #fee2e2; border-left-color: #dc2626; color: #991b1b; }
+  .help-text { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+  .login-screen {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    z-index: 1000; padding: 20px; color: white;
+  }
+  .login-screen h1 { font-size: 28px; margin-bottom: 12px; }
+  .login-screen p { font-size: 14px; opacity: 0.9; margin-bottom: 30px; text-align: center; }
+  .login-screen .btn { max-width: 300px; }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #1f2937; color: white; padding: 10px 18px;
+    border-radius: 24px; font-size: 13px; z-index: 500;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- 로그인 화면 -->
+<div class="login-screen" id="loginScreen">
+  <div style="font-size:64px;margin-bottom:10px">🌿</div>
+  <h1>약사 메이 저염식 관리</h1>
+  <p>데이터를 안전하게 Google Drive에<br>저장하기 위해 로그인해주세요</p>
+  <button class="btn btn-google" id="googleLoginBtn" style="background:white;color:#4285f4">
+    🔐 Google로 로그인
+  </button>
+  <div style="margin-top:20px;font-size:11px;opacity:0.8;text-align:center">
+    이 앱이 만든 파일에만 접근합니다<br>(다른 Drive 파일은 볼 수 없습니다)
+  </div>
+</div>
+
+<div class="header">
+  <h1>🌿 약사 메이 저염식 관리</h1>
+  <div class="date" id="todayDate"></div>
+  <div class="sync-status" id="syncStatus">⏳ 동기화 대기중</div>
+</div>
+
+<div class="container">
+
+  <div class="status-card" id="statusCard">
+    <div class="signal" id="signalEmoji">🟢</div>
+    <div class="sodium-total"><span id="sodiumTotal">0</span> <span style="font-size:18px;color:#6b7280">mg</span></div>
+    <div class="sodium-label">오늘 누적 나트륨 (목표: 1500mg 이하)</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="status-msg" id="statusMsg">아주 좋아요!</div>
+    <div id="endedBadge" class="ended-badge hidden">✅ 오늘 식사 종료됨</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="today">오늘</div>
+    <div class="tab" data-tab="calendar">캘린더</div>
+    <div class="tab" data-tab="settings">설정</div>
+  </div>
+
+  <!-- 오늘 탭 -->
+  <div id="tab-today">
+
+    <div class="card" id="addMealCard">
+      <div class="card-title">📸 음식 추가하기</div>
+
+      <label class="label">사진 업로드 (Gemini 자동 분석 + Drive 저장)</label>
+      <label for="photoInput" class="photo-upload">
+        <div id="uploadText">
+          <div style="font-size:32px">📷</div>
+          <div style="margin-top:6px; font-size:13px; color:#6b7280">탭하여 사진 선택/촬영</div>
+        </div>
+        <img id="photoPreview" class="photo-preview hidden" alt="">
+      </label>
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
+
+      <button class="btn btn-primary" id="analyzeBtn" disabled>
+        <span id="analyzeText">✨ Gemini로 분석하기</span>
+      </button>
+
+      <label class="label">음식 이름</label>
+      <input type="text" class="input" id="foodName" placeholder="예: 김치찌개">
+
+      <label class="label">나트륨 (mg)</label>
+      <input type="number" class="input" id="foodSodium" placeholder="예: 1800" min="0">
+
+      <label class="label">식사 구분</label>
+      <select class="input" id="mealType">
+        <option value="아침">아침</option>
+        <option value="점심">점심</option>
+        <option value="저녁">저녁</option>
+        <option value="간식">간식</option>
+      </select>
+
+      <button class="btn btn-primary" id="saveMealBtn">
+        <span id="saveMealText">✅ 기록 저장 (Drive 동기화)</span>
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🍽️ 오늘 먹은 음식</div>
+      <div id="todayMeals"><div style="text-align:center;color:#9ca3af;padding:20px;font-size:13px">아직 기록이 없습니다</div></div>
+    </div>
+
+    <!-- 식사 종료 카드 -->
+    <div class="card" id="endDayCard">
+      <div class="card-title">🌙 오늘 식사 종료</div>
+      <div style="font-size:13px;color:#4b5563;line-height:1.6;margin-bottom:10px">
+        하루 식사가 끝났다면 종료 버튼을 눌러주세요.<br>
+        종료 후에도 추가 기록은 가능합니다.
+      </div>
+      <div id="endDayContent">
+        <button class="btn btn-warn" id="endDayBtn">🌙 오늘 식사 종료</button>
+      </div>
+      <div id="endDaySummary" class="hidden">
+        <div class="alert alert-success">
+          <strong>✅ 오늘 식사 종료 완료</strong><br>
+          <div id="summaryText" style="margin-top:6px;font-size:13px"></div>
+        </div>
+        <button class="btn btn-secondary" id="undoEndBtn" style="margin-top:8px">↩️ 종료 취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 캘린더 탭 -->
+  <div id="tab-calendar" class="hidden">
+    <div class="card">
+      <div class="calendar-header">
+        <button class="cal-nav" id="prevMonth">‹</button>
+        <div class="cal-month" id="calMonth"></div>
+        <button class="cal-nav" id="nextMonth">›</button>
+      </div>
+      <div class="calendar" id="calendar"></div>
+      <div style="display:flex;justify-content:center;gap:10px;margin-top:14px;font-size:11px;flex-wrap:wrap">
+        <span>🟢 ≤1500</span><span>🟡 ≤2000</span><span>🔴 >2000</span><span>🔵 진행중</span><span>•종료</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📊 이번 달 통계 (종료된 일자만)</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-val" style="color:#10b981" id="statGreen">0</div><div class="stat-lbl">성공일</div></div>
+        <div class="stat"><div class="stat-val" style="color:#f59e0b" id="statYellow">0</div><div class="stat-lbl">주의일</div></div>
+        <div class="stat"><div class="stat-val" style="color:#dc2626" id="statRed">0</div><div class="stat-lbl">실패일</div></div>
+      </div>
+      <div style="margin-top:12px;text-align:center;font-size:13px;color:#4b5563">
+        성공률 <strong id="successRate" style="color:#10b981">0%</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- 설정 탭 -->
+  <div id="tab-settings" class="hidden">
+    <div class="card">
+      <div class="card-title">☁️ Google Drive</div>
+      <div id="driveStatus" style="font-size:13px;color:#4b5563;line-height:1.6"></div>
+      <button class="btn btn-secondary" id="forceSyncBtn" style="margin-top:10px">🔄 강제 동기화</button>
+      <button class="btn btn-secondary" id="logoutBtn" style="margin-top:8px">🚪 로그아웃</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔑 Gemini API 키</div>
+      <input type="password" class="input" id="apiKeyInput" placeholder="AIza...">
+      <div class="help-text">
+        <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#10b981">aistudio.google.com/apikey</a>
+      </div>
+      <button class="btn btn-primary" id="saveApiKey">💾 저장</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">ℹ️ 저장 위치 안내</div>
+      <div style="font-size:13px;color:#4b5563;line-height:1.6">
+        ✅ 사진 → Google Drive (앱 전용 폴더)<br>
+        ✅ 기록 데이터 → Google Drive (mae_diet_data.json)<br>
+        ✅ 어느 기기에서 로그인해도 동일한 데이터 표시<br>
+        ⚠️ 다른 앱이 만든 Drive 파일에는 접근할 수 없습니다
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Google API Library -->
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
+
+<script>
+// ============================================================
+// 🔧 여기 두 줄을 본인 정보로 교체하세요 (필수!)
+// ============================================================
+const GOOGLE_CLIENT_ID = '514392102611-ls43josea9pf9i4pvp47ncs2nut9p2l7.apps.googleusercontent.com';
+const GOOGLE_API_KEY = 'AIzaSyBXllu1Pt0XrhlUZcjGcU3GkQ3YLXomknk';
+// ============================================================
+
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const DATA_FILENAME = 'mae_diet_data.json';
+const PHOTO_FOLDER_NAME = 'mae_diet_photos';
+
+let data = {};
+let currentPhotoBlob = null;
+let currentPhotoPreview = null;
+let calendarDate = new Date();
+let accessToken = null;
+let tokenClient = null;
+let dataFileId = null;
+let photoFolderId = null;
+
+const API_KEY_STORAGE = 'mae_gemini_apikey';
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getDayMeals(key) { return (data[key] && data[key].meals) || []; }
+function getDaySodium(key) { return getDayMeals(key).reduce((s,m)=>s+(m.sodium||0),0); }
+function isDayEnded(key) { return !!(data[key] && data[key].ended); }
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function toast(msg, ms=2000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), ms);
+}
+function setSync(msg) { document.getElementById('syncStatus').textContent = msg; }
+
+// ============================================================
+// Google OAuth & Drive API
+// ============================================================
+function initGoogleAuth() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { alert('로그인 실패: ' + resp.error); return; }
+      accessToken = resp.access_token;
+      localStorage.setItem('mae_access_token', accessToken);
+      localStorage.setItem('mae_token_time', Date.now().toString());
+      document.getElementById('loginScreen').classList.add('hidden');
+      setSync('🔄 Drive 연결 중...');
+      await initDrive();
+    }
+  });
+
+  const savedToken = localStorage.getItem('mae_access_token');
+  const tokenTime = parseInt(localStorage.getItem('mae_token_time') || '0');
+  if (savedToken && Date.now() - tokenTime < 55 * 60 * 1000) {
+    accessToken = savedToken;
+    document.getElementById('loginScreen').classList.add('hidden');
+    setSync('🔄 Drive 연결 중...');
+    initDrive();
+  }
+}
+
+document.getElementById('googleLoginBtn').onclick = () => {
+  tokenClient.requestAccessToken({prompt: 'consent'});
+};
+
+async function driveFetch(url, options={}) {
+  if (!accessToken) throw new Error('로그인 필요');
+  options.headers = {...(options.headers||{}), 'Authorization': `Bearer ${accessToken}`};
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    accessToken = null;
+    localStorage.removeItem('mae_access_token');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    throw new Error('토큰 만료 — 재로그인 필요');
+  }
+  return res;
+}
+
+async function initDrive() {
+  try {
+    let res = await driveFetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${PHOTO_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false&spaces=drive&fields=files(id,name)`
+    );
+    let j = await res.json();
+    if (j.files && j.files.length > 0) {
+      photoFolderId = j.files[0].id;
+    } else {
+      res = await driveFetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: PHOTO_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder'})
+      });
+      j = await res.json();
+      photoFolderId = j.id;
+    }
+
+    res = await driveFetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${DATA_FILENAME}' and trashed=false&spaces=drive&fields=files(id,name,modifiedTime)`
+    );
+    j = await res.json();
+    if (j.files && j.files.length > 0) {
+      dataFileId = j.files[0].id;
+      const dl = await driveFetch(`https://www.googleapis.com/drive/v3/files/${dataFileId}?alt=media`);
+      data = await dl.json();
+      setSync(`✅ 동기화 완료 (${new Date(j.files[0].modifiedTime).toLocaleString('ko-KR')})`);
+    } else {
+      data = {};
+      await saveToDrive();
+      setSync('✅ Drive 새 파일 생성');
+    }
+
+    renderAll();
+  } catch (e) {
+    setSync('❌ ' + e.message);
+    alert('Drive 연결 실패: ' + e.message);
+  }
+}
+
+async function saveToDrive() {
+  if (!accessToken) return;
+  setSync('🔄 저장 중...');
+  try {
+    const metadata = {name: DATA_FILENAME, mimeType: 'application/json'};
+    const body = JSON.stringify(data);
+    if (dataFileId) {
+      const res = await driveFetch(`https://www.googleapis.com/upload/drive/v3/files/${dataFileId}?uploadType=media`, {
+        method: 'PATCH', headers: {'Content-Type': 'application/json'}, body
+      });
+      if (!res.ok) throw new Error('저장 실패');
+    } else {
+      const boundary = '-------314159265358979323846';
+      const delimiter = "\r\n--" + boundary + "\r\n";
+      const closeDelim = "\r\n--" + boundary + "--";
+      const multipartBody =
+        delimiter + 'Content-Type: application/json\r\n\r\n' + JSON.stringify(metadata) +
+        delimiter + 'Content-Type: application/json\r\n\r\n' + body + closeDelim;
+      const res = await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: {'Content-Type': `multipart/related; boundary=${boundary}`},
+        body: multipartBody
+      });
+      const j = await res.json();
+      dataFileId = j.id;
+    }
+    setSync(`✅ 저장 완료 (${new Date().toLocaleTimeString('ko-KR')})`);
+  } catch (e) {
+    setSync('❌ 저장 실패: ' + e.message);
+    throw e;
+  }
+}
+
+async function uploadPhoto(blob, filename) {
+  if (!accessToken || !photoFolderId) throw new Error('Drive 미준비');
+  const metadata = {name: filename, parents: [photoFolderId]};
+  const boundary = '-------photo' + Date.now();
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const closeDelim = "\r\n--" + boundary + "--";
+
+  const base64 = await new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.readAsDataURL(blob);
+  });
+
+  const multipartBody =
+    delimiter + 'Content-Type: application/json\r\n\r\n' + JSON.stringify(metadata) +
+    delimiter + 'Content-Type: image/jpeg\r\nContent-Transfer-Encoding: base64\r\n\r\n' + base64 +
+    closeDelim;
+
+  const res = await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST',
+    headers: {'Content-Type': `multipart/related; boundary=${boundary}`},
+    body: multipartBody
+  });
+  const j = await res.json();
+  return j.id;
+}
+
+async function getPhotoBlobUrl(fileId) {
+  if (!fileId || !accessToken) return null;
+  try {
+    const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  } catch { return null; }
+}
+
+// ============================================================
+// 신호등
+// ============================================================
+function updateSignal() {
+  const key = todayKey();
+  const total = getDaySodium(key);
+  const ended = isDayEnded(key);
+  document.getElementById('sodiumTotal').textContent = total.toLocaleString();
+  const fill = document.getElementById('progressFill');
+  const emoji = document.getElementById('signalEmoji');
+  const msg = document.getElementById('statusMsg');
+  const card = document.getElementById('statusCard');
+  const badge = document.getElementById('endedBadge');
+  const pct = Math.min(100, (total / 2000) * 100);
+  fill.style.width = pct + '%';
+
+  if (total <= 1500) {
+    emoji.textContent = '🟢'; fill.style.background = '#10b981';
+    msg.textContent = total === 0 ? '오늘 식사를 기록해주세요' : (ended ? '오늘 목표 달성! 잘했어요 💪' : '아주 좋아요! 계속 유지하세요');
+    msg.style.color = '#065f46';
+  } else if (total <= 2000) {
+    emoji.textContent = '🟡'; fill.style.background = '#f59e0b';
+    msg.textContent = ended ? '주의 — 다음날은 더 싱겁게' : '주의! 남은 식사는 더 싱겁게 드세요';
+    msg.style.color = '#92400e';
+  } else {
+    emoji.textContent = '🔴'; fill.style.background = '#dc2626';
+    msg.textContent = ended ? '목표 초과 — 내일을 위해 힘내요' : '목표 초과 — 더 이상 짠 음식은 피해주세요';
+    msg.style.color = '#991b1b';
+  }
+
+  card.classList.toggle('ended', ended);
+  badge.classList.toggle('hidden', !ended);
+
+  const endContent = document.getElementById('endDayContent');
+  const endSummary = document.getElementById('endDaySummary');
+  if (ended) {
+    endContent.classList.add('hidden');
+    endSummary.classList.remove('hidden');
+    const result = total <= 1500 ? '🟢 성공' : total <= 2000 ? '🟡 주의' : '🔴 초과';
+    const meals = getDayMeals(key);
+    document.getElementById('summaryText').innerHTML =
+      `총 나트륨: <strong>${total}mg</strong> ${result}<br>` +
+      `식사 ${meals.length}회 기록<br>` +
+      `종료 시각: ${data[key].endedAt || ''}`;
+  } else {
+    endContent.classList.remove('hidden');
+    endSummary.classList.add('hidden');
+  }
+}
+
+async function renderTodayMeals() {
+  const meals = getDayMeals(todayKey());
+  const box = document.getElementById('todayMeals');
+  if (meals.length === 0) {
+    box.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;font-size:13px">아직 기록이 없습니다</div>';
+    return;
+  }
+  box.innerHTML = meals.map((m, i) => `
+    <div class="meal-item">
+      <div class="meal-thumb" id="thumb-${i}" style="display:flex;align-items:center;justify-content:center;font-size:24px">🍽️</div>
+      <div class="meal-info">
+        <div class="meal-name">${escapeHtml(m.name)}</div>
+        <div class="meal-meta">${m.mealType} · ${m.time}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="meal-sodium">${m.sodium}mg</div>
+        <button class="btn-danger-sm" onclick="deleteMeal(${i})">삭제</button>
+      </div>
+    </div>
+  `).join('');
+
+  meals.forEach(async (m, i) => {
+    if (m.photoFileId) {
+      const url = await getPhotoBlobUrl(m.photoFileId);
+      if (url) {
+        const el = document.getElementById('thumb-' + i);
+        if (el) el.outerHTML = `<img class="meal-thumb" src="${url}">`;
+      }
+    }
+  });
+}
+
+window.deleteMeal = async function(idx) {
+  if (!confirm('이 기록을 삭제할까요? (Drive의 사진도 함께 삭제)')) return;
+  const key = todayKey();
+  const meal = data[key].meals[idx];
+  if (meal.photoFileId) {
+    try {
+      await driveFetch(`https://www.googleapis.com/drive/v3/files/${meal.photoFileId}`, {method: 'DELETE'});
+    } catch (e) { console.warn('사진 삭제 실패', e); }
+  }
+  data[key].meals.splice(idx, 1);
+  await saveToDrive();
+  renderTodayMeals();
+  updateSignal();
+  renderCalendar();
+};
+
+// ============================================================
+// 사진 업로드
+// ============================================================
+document.getElementById('photoInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxSize = 1200;
+      let w = img.width, h = img.height;
+      if (w > h && w > maxSize) { h *= maxSize/w; w = maxSize; }
+      else if (h > maxSize) { w *= maxSize/h; h = maxSize; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => {
+        currentPhotoBlob = blob;
+        currentPhotoPreview = canvas.toDataURL('image/jpeg', 0.85);
+        document.getElementById('photoPreview').src = currentPhotoPreview;
+        document.getElementById('photoPreview').classList.remove('hidden');
+        document.getElementById('uploadText').classList.add('hidden');
+        document.getElementById('analyzeBtn').disabled = false;
+      }, 'image/jpeg', 0.85);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('analyzeBtn').addEventListener('click', async () => {
+  const apiKey = localStorage.getItem(API_KEY_STORAGE);
+  if (!apiKey) return alert('설정 탭에서 Gemini API 키를 먼저 입력해주세요.');
+  if (!currentPhotoPreview) return;
+
+  const btn = document.getElementById('analyzeBtn');
+  const text = document.getElementById('analyzeText');
+  btn.disabled = true;
+  text.innerHTML = '<span class="spinner"></span>분석 중...';
+
+  try {
+    const base64Data = currentPhotoPreview.split(',')[1];
+    const prompt = `이 음식 사진을 분석해서 JSON으로만 답하세요.
+{"name": "음식이름(한글)", "sodium": 나트륨_mg_숫자, "note": "간단설명"}
+
+한국음식 참고:
+김치찌개 ~2000mg, 된장찌개 ~1500mg, 라면 ~1800mg, 짜장면 ~2400mg, 짬뽕 ~4000mg,
+비빔밥 ~1200mg, 김밥1줄 ~700mg, 흰밥 ~5mg, 두부조림 ~400mg, 구운생선 ~300mg,
+나물 ~200mg, 김치 1접시 ~600mg, 떡볶이 ~1500mg, 칼국수 ~3000mg`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        contents: [{parts: [{text: prompt}, {inline_data: {mime_type: 'image/jpeg', data: base64Data}}]}],
+        generationConfig: {temperature: 0.2, responseMimeType: 'application/json'}
+      })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const json = await res.json();
+    const result = JSON.parse(json.candidates[0].content.parts[0].text);
+    document.getElementById('foodName').value = result.name || '';
+    document.getElementById('foodSodium').value = result.sodium || '';
+    text.textContent = '✅ ' + (result.note || '분석 완료');
+    setTimeout(() => { text.textContent = '✨ Gemini로 분석하기'; btn.disabled = false; }, 3000);
+  } catch (e) {
+    alert('분석 실패: ' + e.message);
+    text.textContent = '✨ Gemini로 분석하기';
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('saveMealBtn').addEventListener('click', async () => {
+  const name = document.getElementById('foodName').value.trim();
+  const sodium = parseInt(document.getElementById('foodSodium').value);
+  const mealType = document.getElementById('mealType').value;
+  if (!name) return alert('음식 이름을 입력해주세요');
+  if (isNaN(sodium) || sodium < 0) return alert('나트륨 값을 올바르게 입력해주세요');
+
+  const btn = document.getElementById('saveMealBtn');
+  const txt = document.getElementById('saveMealText');
+  btn.disabled = true;
+  txt.innerHTML = '<span class="spinner"></span>저장 중...';
+
+  try {
+    let photoFileId = null;
+    if (currentPhotoBlob) {
+      txt.innerHTML = '<span class="spinner"></span>사진 업로드 중...';
+      const fname = `${todayKey()}_${Date.now()}.jpg`;
+      photoFileId = await uploadPhoto(currentPhotoBlob, fname);
+    }
+    txt.innerHTML = '<span class="spinner"></span>기록 저장 중...';
+    const key = todayKey();
+    if (!data[key]) data[key] = {meals: []};
+    const now = new Date();
+    data[key].meals.push({
+      name, sodium, mealType,
+      time: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`,
+      photoFileId, createdAt: now.toISOString()
+    });
+    await saveToDrive();
+
+    document.getElementById('foodName').value = '';
+    document.getElementById('foodSodium').value = '';
+    document.getElementById('photoPreview').classList.add('hidden');
+    document.getElementById('uploadText').classList.remove('hidden');
+    document.getElementById('photoInput').value = '';
+    document.getElementById('analyzeBtn').disabled = true;
+    currentPhotoBlob = null;
+    currentPhotoPreview = null;
+
+    renderTodayMeals();
+    updateSignal();
+    renderCalendar();
+    toast('✅ Drive에 저장 완료');
+  } catch (e) {
+    alert('저장 실패: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    txt.textContent = '✅ 기록 저장 (Drive 동기화)';
+  }
+});
+
+// ============================================================
+// 식사 종료 / 종료 취소
+// ============================================================
+document.getElementById('endDayBtn').addEventListener('click', async () => {
+  const key = todayKey();
+  const total = getDaySodium(key);
+  const meals = getDayMeals(key);
+  if (meals.length === 0) {
+    if (!confirm('오늘 기록이 없습니다. 그래도 종료할까요?')) return;
+  }
+  const result = total <= 1500 ? '🟢 목표 달성!' : total <= 2000 ? '🟡 주의 (1500~2000)' : '🔴 목표 초과';
+  if (!confirm(`오늘 식사를 종료합니다.\n\n총 나트륨: ${total}mg\n결과: ${result}\n\n진행할까요?`)) return;
+
+  if (!data[key]) data[key] = {meals: []};
+  data[key].ended = true;
+  const now = new Date();
+  data[key].endedAt = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  data[key].finalSodium = total;
+
+  try {
+    await saveToDrive();
+    updateSignal();
+    renderCalendar();
+    toast('🌙 오늘 식사 종료 — Drive 저장 완료');
+  } catch (e) {
+    alert('저장 실패: ' + e.message);
+  }
+});
+
+document.getElementById('undoEndBtn').addEventListener('click', async () => {
+  if (!confirm('종료를 취소할까요?')) return;
+  const key = todayKey();
+  if (data[key]) {
+    delete data[key].ended;
+    delete data[key].endedAt;
+    delete data[key].finalSodium;
+  }
+  await saveToDrive();
+  updateSignal();
+  renderCalendar();
+  toast('↩️ 종료 취소됨');
+});
+
+// ============================================================
+// 탭 / 캘린더
+// ============================================================
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    ['today','calendar','settings'].forEach(name => {
+      document.getElementById('tab-'+name).classList.toggle('hidden', name !== t.dataset.tab);
+    });
+    if (t.dataset.tab === 'calendar') renderCalendar();
+    if (t.dataset.tab === 'settings') updateDriveStatus();
+  });
+});
+
+function renderCalendar() {
+  const y = calendarDate.getFullYear();
+  const m = calendarDate.getMonth();
+  document.getElementById('calMonth').textContent = `${y}년 ${m+1}월`;
+  const firstDay = new Date(y, m, 1).getDay();
+  const lastDate = new Date(y, m+1, 0).getDate();
+  const today = todayKey();
+
+  const days = ['일','월','화','수','목','금','토'];
+  let html = days.map(d => `<div class="cal-day-label">${d}</div>`).join('');
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
+
+  let green=0, yellow=0, red=0;
+  for (let d = 1; d <= lastDate; d++) {
+    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const sodium = getDaySodium(key);
+    const ended = isDayEnded(key);
+    let cls = 'gray';
+    if (sodium > 0) {
+      if (ended) {
+        if (sodium <= 1500) { cls = 'green'; green++; }
+        else if (sodium <= 2000) { cls = 'yellow'; yellow++; }
+        else { cls = 'red'; red++; }
+      } else {
+        cls = 'in-progress';
+      }
+    }
+    const isToday = key === today ? 'today' : '';
+    const dot = ended ? '<span class="ended-dot"></span>' : '';
+    html += `<div class="cal-day ${cls} ${isToday}" title="${sodium}mg${ended?' (종료)':''}">${d}${dot}</div>`;
+  }
+  document.getElementById('calendar').innerHTML = html;
+  document.getElementById('statGreen').textContent = green;
+  document.getElementById('statYellow').textContent = yellow;
+  document.getElementById('statRed').textContent = red;
+  const total = green + yellow + red;
+  document.getElementById('successRate').textContent = total ? Math.round(green/total*100) + '%' : '0%';
+}
+
+document.getElementById('prevMonth').onclick = () => { calendarDate.setMonth(calendarDate.getMonth()-1); renderCalendar(); };
+document.getElementById('nextMonth').onclick = () => { calendarDate.setMonth(calendarDate.getMonth()+1); renderCalendar(); };
+
+// ============================================================
+// 설정
+// ============================================================
+document.getElementById('apiKeyInput').value = localStorage.getItem(API_KEY_STORAGE) || '';
+document.getElementById('saveApiKey').onclick = () => {
+  const k = document.getElementById('apiKeyInput').value.trim();
+  if (!k) return alert('API 키를 입력해주세요');
+  localStorage.setItem(API_KEY_STORAGE, k);
+  toast('✅ Gemini API 키 저장');
+};
+
+function updateDriveStatus() {
+  const s = document.getElementById('driveStatus');
+  s.innerHTML = accessToken
+    ? `✅ 로그인됨<br>📁 사진 폴더: <code>${PHOTO_FOLDER_NAME}</code><br>📄 데이터 파일: <code>${DATA_FILENAME}</code><br>📊 총 ${Object.keys(data).length}일치 기록`
+    : '❌ 로그인되지 않음';
+}
+
+document.getElementById('forceSyncBtn').onclick = async () => {
+  try { await initDrive(); toast('🔄 동기화 완료'); }
+  catch (e) { alert('실패: ' + e.message); }
+};
+
+document.getElementById('logoutBtn').onclick = () => {
+  if (!confirm('로그아웃할까요? (Drive 데이터는 유지됩니다)')) return;
+  accessToken = null;
+  localStorage.removeItem('mae_access_token');
+  localStorage.removeItem('mae_token_time');
+  location.reload();
+};
+
+function renderAll() {
+  updateSignal();
+  renderTodayMeals();
+  renderCalendar();
+  updateDriveStatus();
+}
+
+// ============================================================
+// 초기화
+// ============================================================
+function init() {
+  const now = new Date();
+  const days = ['일','월','화','수','목','금','토'];
+  document.getElementById('todayDate').textContent =
+    `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()} (${days[now.getDay()]})`;
+
+  if (GOOGLE_CLIENT_ID.includes('여기에')) {
+    alert('⚠️ HTML 파일 상단의 GOOGLE_CLIENT_ID와 GOOGLE_API_KEY를 먼저 설정해주세요!');
+    return;
+  }
+
+  const waitGoogle = setInterval(() => {
+    if (typeof google !== 'undefined' && google.accounts) {
+      clearInterval(waitGoogle);
+      initGoogleAuth();
+    }
+  }, 100);
+}
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
